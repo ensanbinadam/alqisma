@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار جداول القسمة</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 10px;
+            direction: rtl;
+            background-color: #f0f8ff;
+            /* لون خلفية مريح */
+            margin: 0;
+        }
+
+        .quiz-container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .quiz-header {
+            margin-bottom: 20px;
+        }
+
+        .timer {
+            color: #ff5722;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .score {
+            font-size: 24px;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+
+        .question {
+            font-size: 26px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .answers button {
+            display: block;
+            width: 90%;
+            margin: 10px auto;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .answers button:hover {
+            background: #0056b3;
+            transform: scale(1.05);
+        }
+
+        .answers button.correct {
+            background: #28a745 !important;
+        }
+
+        .answers button.wrong {
+            background: #dc3545 !important;
+        }
+
+        .final-score {
+            font-size: 24px;
+            color: #28a745;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .restart-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            background: #007bff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .restart-btn:hover {
+            background: #0056b3;
+        }
+
+        /* استعلامات الوسائط للتجاوب */
+        @media (max-width: 768px) {
+            .quiz-container {
+                max-width: 95%;
+                padding: 15px;
+            }
+
+            .question {
+                font-size: 22px;
+            }
+
+            .answers button {
+                font-size: 16px;
+                padding: 12px;
+            }
+
+            .timer {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .quiz-container {
+                max-width: 100%;
+            }
+
+            .question {
+                font-size: 20px;
+            }
+
+            .answers button {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .timer {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="quiz-container">
+        <div class="quiz-header">
+            <div class="score">الدرجة: <span id="current-score">٠</span>/١٠٠</div>
+            <div class="question" id="question">جاري التحميل...</div>
+        </div>
+        <div id="question-number-container" style="margin-bottom: 20px;">السؤال: <span id="question-number">١</span>/١٠٠
+        </div>
+        <div class="answers" id="answers"></div>
+        <div class="timer">الوقت المتبقي: <span id="timer">١٠</span> ثانية</div>
+        <button class="restart-btn" id="restart-btn">البدء من جديد</button>
+        <div class="final-score" id="final-score" style="display: none;"></div>
+    </div>
+    <script>
+        const totalQuestions = 100;
+        const timerDuration = 10;
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timer;
+
+        function toHindiNumber(number) {
+            const hindiDigits = "٠١٢٣٤٥٦٧٨٩";
+            return String(number).split("").map(d => (d >= "0" && d <= "9" ? hindiDigits[d] : d)).join("");
+        }
+
+        function generateQuestions() {
+            for (let i = 1; i <= 10; i++) {
+                for (let j = 1; j <= 10; j++) {
+                    const dividend = i * j;
+                    questions.push({
+                        question: `${toHindiNumber(dividend)} ÷ ${toHindiNumber(i)} = ؟`,
+                        correct: j,
+                        options: shuffleOptions([j, randomWrongAnswer(j), randomWrongAnswer(j)]).map(toHindiNumber)
+                    });
+                }
+            }
+            questions = shuffleOptions(questions).slice(0, totalQuestions);
+        }
+
+        function shuffleOptions(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function randomWrongAnswer(correctAnswer) {
+            let wrongAnswer;
+            do {
+                wrongAnswer = Math.floor(Math.random() * 10) + 1;
+            } while (wrongAnswer === correctAnswer);
+            return wrongAnswer;
+        }
+
+        function loadQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                endQuiz();
+                return;
+            }
+
+            const currentQuestion = questions[currentQuestionIndex];
+            document.getElementById('question-number').textContent = toHindiNumber(currentQuestionIndex + 1);
+            document.getElementById('question').textContent = currentQuestion.question;
+            const answersDiv = document.getElementById('answers');
+            answersDiv.innerHTML = "";
+            currentQuestion.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.onclick = () => checkAnswer(button, option);
+                answersDiv.appendChild(button);
+            });
+
+            resetTimer();
+        }
+
+        function checkAnswer(button, answer) {
+            clearInterval(timer);
+            const buttons = document.querySelectorAll('.answers button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            const currentQuestion = questions[currentQuestionIndex];
+            const correctAnswerHindi = toHindiNumber(currentQuestion.correct);
+            if (answer === correctAnswerHindi) {
+                button.classList.add('correct');
+                score++;
+                updateScore();
+            } else {
+                button.classList.add('wrong');
+                buttons.forEach(btn => {
+                    if (btn.textContent === correctAnswerHindi) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+            }, 1500);
+        }
+
+        function updateScore() {
+            document.getElementById('current-score').textContent = toHindiNumber(score);
+        }
+
+        function endQuiz() {
+            document.getElementById('question').textContent = "انتهى الاختبار!";
+            document.getElementById('answers').style.display = "none";
+            const grade = calculateGrade(score, totalQuestions);
+            document.getElementById('final-score').textContent = `النتيجة النهائية: ${toHindiNumber(score)} من ${toHindiNumber(totalQuestions)} (${grade})`;
+            document.getElementById('final-score').style.display = "block";
+        }
+
+        function calculateGrade(score, total) {
+            const percentage = (score / total) * 100;
+            if (percentage >= 90) return "ممتاز";
+            if (percentage >= 75) return "جيد جدًا";
+            if (percentage >= 50) return "جيد";
+            return "بحاجة إلى تحسين";
+        }
+
+        function resetTimer() {
+            let timeLeft = timerDuration;
+            document.getElementById('timer').textContent = toHindiNumber(timeLeft);
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = toHindiNumber(timeLeft);
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    currentQuestionIndex++;
+                    loadQuestion();
+                }
+            }, 1000);
+        }
+
+        generateQuestions();
+        loadQuestion();
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            currentQuestionIndex = 0;
+            score = 0;
+            document.getElementById('answers').style.display = "block";
+            document.getElementById('final-score').style.display = "none";
+            updateScore();
+            loadQuestion();
+        });
+    </script>
+</body>
+
+</html>
